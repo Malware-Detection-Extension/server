@@ -1,0 +1,10 @@
+flask
+flask-cors
+requests
+docker
+python-magic
+yara-python
+beautifulsoup4
+lxml
+fpdf2
+

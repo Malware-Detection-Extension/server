@@ -1,0 +1,8 @@
+{
+  "filename": null,
+  "file_type": "unknown",
+  "is_malicious": true,
+  "yara_matches": [],
+  "risk_score": 100,
+  "message": "TARGET_URL \ub610\ub294 FILENAME \ud658\uacbd \ubcc0\uc218\uac00 \uc124\uc815\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4."
+}
