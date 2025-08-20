@@ -32,22 +32,22 @@
 
 ```
 /
-├───analysis_engine.py      # 핵심 정적 분석 로직
-├───app.py                  # 도커 컨테이너에서 실행되는 메인 분석 스크립트
-├───controller.py           # 도커 컨테이너 생성 및 제어
-├───docker-compose.yml      # Docker Compose 설정
-├───Dockerfile              # 분석 환경용 Dockerfile
-├───file_type.py            # 파일 타입 분석 유틸리티
-├───flask_server.py         # 메인 Flask 웹 서버
-├───logging_config.py       # 로깅 설정
-├───pdf_report.py           # 악성 분석 PDF 보고서 생성
-├───report_template.json    # JSON 보고서 템플릿
-├───requirements.txt        # Python 의존성 목록
-├───start.sh                # 서버 실행 스크립트
-├───url_analyzer.py         # URL 분석기 (ML 모델 사용)
-├───xgb_url_classifier.joblib # URL 분류용 XGBoost 모델
-├───yara_scan.py            # YARA 스캐너
-├───rules/                  # YARA 룰 디렉터리
+├───analysis_engine.py          # 핵심 정적 분석 로직
+├───app.py                      # 도커 컨테이너에서 실행되는 메인 분석 스크립트
+├───controller.py               # 도커 컨테이너 생성 및 제어
+├───docker-compose.yml          # Docker Compose 설정
+├───Dockerfile                  # 분석 환경용 Dockerfile
+├───file_type.py                # 파일 타입 분석 유틸리티
+├───flask_server.py             # 메인 Flask 웹 서버
+├───logging_config.py           # 로깅 설정
+├───pdf_report.py               # 악성 분석 PDF 보고서 생성
+├───report_template.json        # JSON 보고서 템플릿
+├───requirements.txt            # Python 의존성 목록
+├───start.sh                    # 서버 실행 스크립트
+├───url_analyzer.py             # URL 분석기 (ML 모델 사용)
+├───xgb_url_classifier.joblib   # URL 분류용 XGBoost 모델
+├───yara_scan.py                # YARA 스캐너
+├───rules/                      # YARA 룰 디렉터리
 └───__pycache__/
 ```
 
