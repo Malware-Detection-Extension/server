@@ -81,7 +81,7 @@ class MaliciousPDFReport(FPDF):
         if score >= 80: risk_level, color = "CRITICAL", (255, 0, 0)
         elif score >= 60: risk_level, color = "HIGH", (255, 165, 0)
         else: risk_level, color = "LOW", (0, 176, 80)
-        
+
         self.set_font(self.font_family, 'B', 12)
         self.set_text_color(*color)
         self.cell(50, 10, 'Risk Level', border=1)
@@ -102,22 +102,22 @@ class MaliciousPDFReport(FPDF):
     def archived_files_summary(self, archived_files):
         if not archived_files:
             return
-            
+
         self.section_title('Archived File Analysis Summary')
-        
-        # Table Header
+
+        # table header
         self.set_font(self.font_family, 'B', 10)
         self.cell(80, 8, 'Filename', 1)
         self.cell(30, 8, 'Risk Score', 1)
         self.cell(80, 8, 'File Type', 1, ln=1)
 
-        # Table Rows (display up to 10 files)
+        # table rows (display up to 10 files)
         for report in archived_files[:10]:
             self.set_font(self.font_family, '', 9)
             filename = report.get("file_info", {}).get("filename", "N/A")
             risk_score = report.get("risk_score", 0)
             file_type = report.get("file_info", {}).get("file_type", "N/A")
-            
+
             # set a light red background for high-risk files
             if risk_score >= 60:
                 # light red
@@ -133,14 +133,14 @@ class MaliciousPDFReport(FPDF):
 
         if len(archived_files) > 10:
             self.cell(0, 8, f"... and {len(archived_files) - 10} more files.", 1, 1, 'C')
-        
+
         self.ln(10)
 
     # add a section for static properties like size, type, and hashes of the container file
     def static_properties(self, analysis_data):
         file_info = analysis_data.get('file_info')
         if not file_info: return
-            
+
         self.section_title('Static Properties (Archive Container)')
         hashes = analysis_data.get('hashes', {})
         self.key_value_row('File Size', f"{file_info.get('size', 0):,} bytes")
@@ -152,12 +152,49 @@ class MaliciousPDFReport(FPDF):
         for h_type, h_value in hashes.items(): self.key_value_row(h_type.upper(), h_value)
         self.ln(10)
 
+    # add a section with YARA scan results about the analysis session
+    def yara_results(self, matches: List[Dict]):
+        self.section_title("YARA Rule Matches")
+        if not matches:
+            self.key_value_row("YARA Matches", "No matches found")
+            return
+
+        self.key_value_row("Total Matches", f"{len(matches)} rule(s) triggered")
+        self.ln(2)
+
+        for i, match in enumerate(matches, 1):
+            rule_name = match.get("rule", "Unknown")
+            meta = match.get("meta", {})
+            severity = meta.get("severity", "unknown")
+
+            self.set_font(self.font_family, 'B', 10)
+            self.cell(15, 5, f"{i}.", 0, 0)
+            self.set_font(self.font_family, '', 10)
+            self.cell(0, 5, f"Rule: {rule_name} | Severity: {severity.upper()}", 0, 1)
+
+            strings = match.get("strings", [])
+            if strings:
+                for s in strings[:3]:
+                    identifier = s.get("identifier", "")
+                    offset = s.get("offset", 0)
+                    data = s.get("data", "")[:50]
+                    self.set_x(25)
+                    self.set_font(self.font_family, '', 9)
+                    self.cell(0, 4, f"{identifier} at 0x{offset:X}: {data}...", 0, 1)
+
+                if len(strings) > 3:
+                    self.set_x(25)
+                    self.cell(0, 4, f"... and {len(strings) - 3} more matches", 0, 1)
+
+            self.ln(1)
+
+
 # generate a PDF report if the analysis result is malicious
 def generate_malicious_pdf_report(analysis_result: Dict[str, Any],
                                  url: str,
                                  original_filename: Optional[str] = None,
                                  pdf_reports_dir: str = "./reports/malicious_pdf") -> Optional[str]:
-    
+
     if not analysis_result.get('is_malicious', False):
         return None
 
@@ -170,18 +207,21 @@ def generate_malicious_pdf_report(analysis_result: Dict[str, Any],
         safe_filename = re.sub(r'[^\w\-_.]', '_', original_filename or "download")
         pdf_filename = f"malicious_report_{timestamp}_{safe_filename[:30]}.pdf"
         pdf_path = pdf_dir / pdf_filename
-        
+
         # create a PDF instance and populate it with data
         pdf = MaliciousPDFReport()
         pdf.risk_summary(analysis_result.get('risk_score', 0), analysis_result.get('message', ''))
         pdf.analysis_metadata(url, original_filename)
-        
+
         # if the file was an archive, add the summary of its contents
         pdf.archived_files_summary(analysis_result.get('archived_files'))
-        
+
+        # add YARA results
+        pdf.yara_results(analysis_result.get("yara_matches", []))
+
         # add static properties of the main container file
         pdf.static_properties(analysis_result)
-        
+
         # output the final PDF to the specified path
         pdf.output(str(pdf_path))
         logger.info(f"Malicious PDF report generated: {pdf_path}")
@@ -191,4 +231,3 @@ def generate_malicious_pdf_report(analysis_result: Dict[str, Any],
     except Exception as e:
         logger.error(f"Failed to generate PDF report: {e}")
         return None
-
