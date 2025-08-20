@@ -1,0 +1,39 @@
+{
+    "is_malicious": false,
+    "risk_score": 0,
+    "message": "Analysis has not been run yet.",
+    "url_analysis": null,
+    "file_info": {
+        "size": 0,
+        "mime_type": "",
+        "file_type": ""
+    },
+    "hashes": {
+        "md5": "",
+        "sha1": "",
+        "sha256": ""
+    },
+    "entropy": 0.0,
+    "packers": [],
+    "pe_info": null,
+    "extension_risk": {
+        "risk": "low",
+        "extension": ""
+    },
+    "size_anomaly": null,
+    "archived_files": null,
+    "yara_matches": [],
+    "obfuscation_detected": false,
+    "deobfuscation_result": {
+        "success": false,
+        "obfuscation_types": [],
+        "log": []
+    },
+    "analysis_details": {
+    	"potential_urls": [],
+        "potential_ips": [],
+        "suspicious_api_calls": ""
+    },
+    "yara_base_score": 0
+}
+

@@ -7,6 +7,7 @@ rule Archive_With_PE_File
     meta:
         description = "압축파일 내부에 PE 실행파일이 존재"
         author = "Seo"
+	severity = "high"
         reference = "https://attack.mitre.org/techniques/T1027/001/"
         filetype = "ZIP or RAR"
 
@@ -26,6 +27,7 @@ rule Archive_With_Suspicious_Script
     meta:
         description = "압축파일 내 .vbs, .js, .bat 등 스크립트 존재"
         author = "Seo"
+	severity = "medium"
         reference = "https://attack.mitre.org/techniques/T1059/005/"
 
     strings:
@@ -45,6 +47,7 @@ rule Archive_With_Encoded_PE_AutoIt
     meta:
         description = "압축파일 내 AutoIt 또는 Base64 인코딩된 PE 페이로드"
         author = "Seo"
+	severity = "high"
 
     strings:
         $autoit = "AutoIt3.exe" nocase
@@ -60,6 +63,7 @@ rule Archive_With_Lure_Doc_And_Executable
     meta:
         description = "압축파일에 Word lure 문서와 실행파일이 함께 있는 경우"
         author = "Seo"
+	severity = "high"
 
     strings:
         $doc = ".doc" nocase
@@ -78,6 +82,7 @@ rule Archive_With_Disguised_Executable
     meta:
         description = "파일 이름이 이중 확장자로 위장된 실행파일 포함 (.jpg.exe 등)"
         author = "Seo"
+	severity = "high"
 
     strings:
         $jpg_exe = ".jpg.exe" nocase

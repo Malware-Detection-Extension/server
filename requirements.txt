@@ -4,7 +4,8 @@ requests
 docker
 python-magic
 yara-python
-beautifulsoup4
-lxml
+pefile
 fpdf2
-
+joblib
+pandas
+xgboost

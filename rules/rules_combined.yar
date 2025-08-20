@@ -1,3 +1,5 @@
+import "pe"
+
 // Word 문서 관련
 include "./documents/doc_macros.yar"
 include "./documents/docx_macros.yar"

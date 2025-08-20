@@ -5,12 +5,5 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./reports:/app/reports
-      - ./logs:/app/logs
-      - /var/run/docker.sock:/var/run/docker.sock  # Docker 소켓 마운트
-    privileged: false  # Docker-in-Docker를 위한 권한
-    environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
+
+    image: malware_worker

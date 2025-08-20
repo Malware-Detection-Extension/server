@@ -1,5 +1,0 @@
-{
-  "error": "404 Client Error for http+docker://localhost/v1.51/containers/db3b536a1affe62fef1ecf22c08d57baf161b3b8c68d2ebfa3689c0241bd5343/json: Not Found (\"No such container: db3b536a1affe62fef1ecf22c08d57baf161b3b8c68d2ebfa3689c0241bd5343\")",
-  "is_malicious": true,
-  "message": "Unexpected error during worker execution."
-}

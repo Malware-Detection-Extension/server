@@ -122,14 +122,25 @@ rule DOC_Social_Engineering_Strings
 rule DOC_Embedded_PE
 {
     meta:
-        description = "문서 안에 PE 실행파일 시그니처가 숨어 있을 경우"
+        description = "문서, 이미지 등 비실행 파일 내부에 실제 PE 구조를 가진 실행 파일이 숨겨져 있을 경우"
         author = "Seo"
-        severity = "high"
+        severity = "critical"
         category = "document"
 
     strings:
-        $mz = { 4D 5A } // "MZ"
+        // PE 파일의 시작 시그니처
+        $mz = "MZ"
 
     condition:
-        $mz
+        // 이 파일 자체가 PE 파일이 아니면서
+        not (uint16(0) == 0x5A4D) and
+        // 파일 내부에 MZ 시그니처가 하나 이상 존재하고,
+        #mz > 0 and
+        // 그 중 하나라도 유효한 PE 파일의 시작점인지 확인
+        for any of ($mz) : (
+           // @는 $mz가 발견된 위치(offset)를 의미합니다.
+           // @ + 0x3c 위치에 있는 4바이트(PE 헤더 포인터)를 읽고,
+           // 그 포인터가 가리키는 위치의 4바이트가 "PE\0\0" (0x50450000)인지 확인합니다.
+           uint32(@ + uint32(@ + 0x3c)) == 0x50450000
+        )
 }
