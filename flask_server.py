@@ -39,7 +39,7 @@ logger.info("URL Analyzer initialized.")
 def serve_index():
     return "Malware Detection Server is running."
 
-# the main endpoint that receives a URL, analyzes it and the file it points to
+# the main endpoint that receives a download URL, analyzes it and the file it points to
 @app.route("/analyze", methods=["POST"])
 def analyze_download():
     try:
@@ -49,14 +49,14 @@ def analyze_download():
             return jsonify({"error": "URL is required"}), 400
 
         logger.info(f"\n[*] Request analysis")
-        
+
         # analyze the URL itself using the pre-loaded ML model
         url_analysis_result = url_analyzer.check_url(url)
         logger.info(f"[+] URL analysis result: {url_analysis_result}")
 
         # launch a Docker container to download and analyze the file
         file_analysis_result = launch_worker_container(url, DOCKER_DEBUG_MODE)
-        
+
         # merge the URL and file analysis results into a single report
         result = file_analysis_result
         result["url_analysis"] = url_analysis_result
@@ -64,21 +64,26 @@ def analyze_download():
         # recalculate the final verdict
         url_is_malicious = url_analysis_result.get("is_malicious", False)
         file_is_malicious = file_analysis_result.get("is_malicious", False)
-        result["is_malicious"] = url_is_malicious and file_is_malicious
 
         # combine human-readable messages from both analysis stages
         messages = []
         if url_is_malicious:
+            result["risk_score"] += 20
+            if result.get("risk_score") >= 60:
+                result["is_malicious"] = True
+                messages.append("As a result of a comprehensive analysis, it is suspected to be a malicious file.")
+
             messages.append("Malicious URL detected by ML model.")
+
         if file_is_malicious:
-            file_message = file_analysis_result.get("message", "Malicious file detected.")
+            file_message = file_analysis_result.get("message", "Malicious file detected by YARA rules.")
             messages.append(file_message)
 
         if not messages:
             result["message"] = "URL and file appear to be safe."
         else:
             result["message"] = " | ".join(messages)
-        
+
         logger.info(f"[+] Analysis done. Malicious: {result.get('is_malicious', 'N/A')}")
 
         # save the full JSON analysis report to a file
@@ -143,4 +148,3 @@ def analyze_download():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
-
