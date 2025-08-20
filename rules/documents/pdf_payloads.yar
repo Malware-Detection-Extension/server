@@ -14,7 +14,7 @@ rule PDF_Embedded_JavaScript
     strings:
         $js = "/JavaScript"
         $open_action = "/OpenAction"
-        $aa = "/AA"  // Additional Actions
+        $aa = "/AA"
         $launch = "/Launch"
 
     condition:
@@ -57,4 +57,5 @@ rule PDF_Contains_Suspicious_Keywords
 
     condition:
         uint32(0) == 0x25504446 and any of them
+
 }
