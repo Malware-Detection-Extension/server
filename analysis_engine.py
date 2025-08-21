@@ -56,7 +56,7 @@ class AnalysisEngine:
         self._analyze_hashes()
         self.results['entropy'] = self._calculate_entropy()
         self._analyze_risk_factors()
-        
+
         # branch analysis logic depending on whether the file is an archive
         mime_type = self.results.get("file_info", {}).get("mime_type", "")
         if "zip" in mime_type or self.original_filename.lower().endswith(".zip"):
@@ -85,7 +85,7 @@ class AnalysisEngine:
             try:
                 with zipfile.ZipFile(self.file_path, 'r') as zip_ref:
                     zip_ref.extractall(temp_dir)
-                
+
                 # iterate through all extracted files for analysis
                 for root, _, files in os.walk(temp_dir):
                     for filename in files:
@@ -93,20 +93,20 @@ class AnalysisEngine:
                         try:
                             with open(archived_file_path, 'rb') as f:
                                 archived_file_data = f.read()
-                            
+
                             # create a new engine instance for recursive analysis
                             sub_engine = AnalysisEngine(archived_file_path, archived_file_data, filename)
                             sub_report = sub_engine.run_all_analyses()
-                            
+
                             self.results["archived_files"].append(sub_report)
-                            
+
                             if sub_report.get("is_malicious"):
                                 malicious_files_count += 1
                             max_risk_score = max(max_risk_score, sub_report.get("risk_score", 0))
 
                         except Exception as e:
                             print(f"Error analyzing archived file {filename}: {e}")
-            
+
             except zipfile.BadZipFile:
                 # handle corrupted zip files
                 self.results["message"] = "Error: Corrupted or invalid ZIP file."
@@ -117,7 +117,7 @@ class AnalysisEngine:
         # consolidate final results
         self.results["risk_score"] = max(max_risk_score, self.results.get("risk_score", 0))
         self.results["is_malicious"] = self.results["risk_score"] >= 60
-        
+
         if malicious_files_count > 0:
             self.results["message"] = f"Archive contains {malicious_files_count} malicious file(s)."
         else:
@@ -142,7 +142,7 @@ class AnalysisEngine:
             if p_x > 0: entropy += - p_x * math.log(p_x, 2)
         return entropy
 
-    # assess risk baased on file extension and size anomalies
+    # assess risk based on file extension and size anomalies
     def _analyze_risk_factors(self):
         ext = f".{self.original_filename.split('.')[-1].lower()}"
         self.results["extension_risk"] = { "risk": EXTENSION_RISKS.get(ext, "low"), "extension": ext }
@@ -195,13 +195,15 @@ class AnalysisEngine:
     # calculate a final risk score and make a malicious/safe verdict
     def _calculate_final_score_and_verdict(self):
         final_score = self.results.get("yara_base_score", 0)
-        
+
         # add points to the score based on various risk factors
         if final_score < 100:
             if self.results.get("extension_risk", {}).get("risk") == "high":
-                final_score = min(100, final_score + 15)
+                final_score = min(100, final_score + 25)
+            if self.results.get("extension_risk", {}).get("risk") == "medium":
+                final_score = min(100, final_score + 10)
             if self.results.get("obfuscation_detected"):
-                final_score = min(100, final_score + 20)
+                final_score = min(100, final_score + 10)
             if self.results.get("entropy", 0) > 7.9:
                  final_score = min(100, final_score + 10)
 
@@ -213,6 +215,3 @@ class AnalysisEngine:
             self.results["message"] = "Malicious file detected based on multiple indicators."
         else:
             self.results["message"] = "The file appears to be safe."
-
-
-
