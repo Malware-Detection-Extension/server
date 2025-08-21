@@ -47,33 +47,40 @@ class MaliciousPDFReport(FPDF):
 
     # create a two-column row for displaying a key and its value, handling multi-line text
     def key_value_row(self, key, value):
+        line_height = 8
+
+        # calculate the number of lines required for key and value
+        self.set_font(self.font_family, 'B', 10)
+        key_lines = self.multi_cell(w=50, h=line_height, text=key, split_only=True)
+
+        self.set_font(self.font_family, '', 10)
+        value_lines = self.multi_cell(w=140, h=line_height, text=str(value), split_only=True)
+
+        # determine the total height of the row
+        row_height = max(len(key_lines), len(value_lines)) * line_height
+
+        # check if there is enough space on the page, if not, add a new page
+        if self.get_y() + row_height > self.page_break_trigger:
+            self.add_page()
+
         start_y = self.get_y()
+        start_x = self.get_x()
 
-        # draw the key in the first column
+        # draw the borders for the entire row
+        self.rect(start_x, start_y, 190, row_height)
+        self.line(start_x + 50, start_y, start_x + 50, start_y + row_height)
+
+        # draw the key text
         self.set_font(self.font_family, 'B', 10)
-        self.multi_cell(50, 8, key, border=0, align='L')
-        key_end_y = self.get_y()
+        self.multi_cell(50, line_height, key, border=0, align='L')
 
-        # move to the second column and draw the value
-        self.set_xy(self.l_margin + 50, start_y)
+        # move to the second column and draw the value text
+        self.set_xy(start_x + 50, start_y)
         self.set_font(self.font_family, '', 10)
-        self.multi_cell(140, 8, str(value), border=0, align='L')
-        value_end_y = self.get_y()
+        self.multi_cell(140, line_height, str(value), border=0, align='L')
 
-        # determine the final Y position after drawing both cells
-        final_y = max(key_end_y, value_end_y)
-        row_height = final_y - start_y
-
-        # redraw the cells with a border to ensure it fits the content
-        self.rect(self.l_margin, start_y, 190, row_height)
-        self.line(self.l_margin + 50, start_y, self.l_margin + 50, final_y)
-        self.set_xy(self.l_margin, start_y)
-        self.set_font(self.font_family, 'B', 10)
-        self.multi_cell(50, 8, key, border=0, align='L')
-        self.set_xy(self.l_margin + 50, start_y)
-        self.set_font(self.font_family, '', 10)
-        self.multi_cell(140, 8, str(value), border=0, align='L')
-        self.set_y(final_y)
+        # set the Y position for the next element
+        self.set_y(start_y + row_height)
 
     # add the executive summary section with a color-coded risk level
     def risk_summary(self, score, message):
@@ -152,42 +159,78 @@ class MaliciousPDFReport(FPDF):
         for h_type, h_value in hashes.items(): self.key_value_row(h_type.upper(), h_value)
         self.ln(10)
 
+    # add a section for risk factors
+    def risk_factors(self, analysis_data):
+        self.section_title('Heuristic Risk Factors')
+        ext_risk = analysis_data.get('extension_risk', {})
+        size_anomaly = analysis_data.get('size_anomaly')
+        packers = analysis_data.get('packers', [])
+        obfuscation = analysis_data.get('obfuscation_detected', False)
+        self.key_value_row('Extension Risk', f"{ext_risk.get('risk', 'N/A').upper()} ({ext_risk.get('extension', 'N/A')})")
+        if size_anomaly: self.key_value_row('Size Anomaly', f"{size_anomaly.get('anomaly')}: {size_anomaly.get('description')}")
+        else: self.key_value_row('Size Anomaly', 'None detected.')
+        self.key_value_row('Packers Detected', ', '.join(packers) if packers else 'None detected.')
+        self.key_value_row('Obfuscation Detected', 'Yes' if obfuscation else 'No')
+        self.ln(10)
+
+    # add a section for pe_detail
+    def pe_details(self, pe_info):
+        if not pe_info or "error" in pe_info: return
+        self.section_title('PE File Details')
+        self.key_value_row('PE Type', pe_info.get('type', 'Unknown'))
+        self.key_value_row('Architecture', pe_info.get('architecture', 'Unknown'))
+        self.key_value_row('Machine', pe_info.get('machine', 'Unknown'))
+        self.key_value_row('Sections', str(pe_info.get('sections', 0)))
+        timestamp = pe_info.get('timestamp', 0)
+        if timestamp:
+            compile_time = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S UTC')
+            self.key_value_row('Compile Time', compile_time)
+        self.ln(10)
+
+    # add a section for indicators of compromise
+    def indicators_of_compromise(self, analysis_details):
+        if not analysis_details: return
+        self.section_title('Indicators of Compromise (IOCs)')
+        urls = analysis_details.get('potential_urls', [])
+        ips = analysis_details.get('potential_ips', [])
+        self.key_value_row('Potential URLs', '\n'.join(urls) if urls else 'None found.')
+        self.key_value_row('Potential IPs', '\n'.join(ips) if ips else 'None found.')
+        self.key_value_row('Suspicious API Calls', analysis_details.get('suspicious_api_calls', "") or 'None found.')
+        self.ln(10)
+
     # add a section with YARA scan results about the analysis session
-    def yara_results(self, matches: List[Dict]):
-        self.section_title("YARA Rule Matches")
+    def yara_results(self, matches):
+        self.section_title('YARA Detection Results')
         if not matches:
-            self.key_value_row("YARA Matches", "No matches found")
+            self.cell(0, 10, 'No YARA rules matched.', border=1, ln=1)
+            self.ln(10)
             return
 
-        self.key_value_row("Total Matches", f"{len(matches)} rule(s) triggered")
-        self.ln(2)
+        self.set_font(self.font_family, 'B', 10)
+        self.cell(95, 8, 'Rule Name', 1); self.cell(30, 8, 'Severity', 1); self.cell(65, 8, 'Matched String (first)', 1, ln=1)
 
-        for i, match in enumerate(matches, 1):
-            rule_name = match.get("rule", "Unknown")
-            meta = match.get("meta", {})
-            severity = meta.get("severity", "unknown")
-
-            self.set_font(self.font_family, 'B', 10)
-            self.cell(15, 5, f"{i}.", 0, 0)
-            self.set_font(self.font_family, '', 10)
-            self.cell(0, 5, f"Rule: {rule_name} | Severity: {severity.upper()}", 0, 1)
-
-            strings = match.get("strings", [])
-            if strings:
-                for s in strings[:3]:
-                    identifier = s.get("identifier", "")
-                    offset = s.get("offset", 0)
-                    data = s.get("data", "")[:50]
-                    self.set_x(25)
-                    self.set_font(self.font_family, '', 9)
-                    self.cell(0, 4, f"{identifier} at 0x{offset:X}: {data}...", 0, 1)
-
-                if len(strings) > 3:
-                    self.set_x(25)
-                    self.cell(0, 4, f"... and {len(strings) - 3} more matches", 0, 1)
-
-            self.ln(1)
-
+        for match in matches:
+            self.set_font(self.font_family, '', 9)
+            severity = match.get('meta', {}).get('severity', 'low').upper()
+            first_string = match.get('strings', [{}])[0]
+            str_data = f"{first_string.get('identifier', '')}: {first_string.get('data', '')[:25]}"
+            start_y = self.get_y()
+            self.multi_cell(95, 8, match.get('rule', 'N/A'), border=0)
+            y1 = self.get_y()
+            self.set_xy(self.l_margin + 95, start_y)
+            self.multi_cell(30, 8, severity, border=0)
+            y2 = self.get_y()
+            self.set_xy(self.l_margin + 125, start_y)
+            self.multi_cell(65, 8, str_data, border=0)
+            y3 = self.get_y()
+            final_y = max(y1, y2, y3)
+            row_height = final_y - start_y
+            self.rect(self.l_margin, start_y, 190, row_height)
+            self.line(self.l_margin + 95, start_y, self.l_margin + 95, final_y)
+            self.line(self.l_margin + 125, start_y, self.l_margin + 125, final_y)
+            self.set_y(final_y)
+            self.ln(0)
+        self.ln(10)
 
 # generate a PDF report if the analysis result is malicious
 def generate_malicious_pdf_report(analysis_result: Dict[str, Any],
@@ -212,15 +255,12 @@ def generate_malicious_pdf_report(analysis_result: Dict[str, Any],
         pdf = MaliciousPDFReport()
         pdf.risk_summary(analysis_result.get('risk_score', 0), analysis_result.get('message', ''))
         pdf.analysis_metadata(url, original_filename)
-
-        # if the file was an archive, add the summary of its contents
         pdf.archived_files_summary(analysis_result.get('archived_files'))
-
-        # add YARA results
-        pdf.yara_results(analysis_result.get("yara_matches", []))
-
-        # add static properties of the main container file
         pdf.static_properties(analysis_result)
+        pdf.risk_factors(analysis_result)
+        pdf.pe_details(analysis_result.get('pe_info'))
+        pdf.indicators_of_compromise(analysis_result.get('analysis_details'))
+        pdf.yara_results(analysis_result.get('yara_matches', []))
 
         # output the final PDF to the specified path
         pdf.output(str(pdf_path))
@@ -231,3 +271,4 @@ def generate_malicious_pdf_report(analysis_result: Dict[str, Any],
     except Exception as e:
         logger.error(f"Failed to generate PDF report: {e}")
         return None
+        
