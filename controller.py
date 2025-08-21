@@ -46,13 +46,13 @@ def remove_container_if_exists(container_name: str) -> bool:
 def launch_worker_container(url: str, debug_mode: bool) -> dict:
     if not client:
         return {"error": "Docker daemon is not available.", "is_malicious": True, "message": "Docker not running."}
-    
+
     container_id = uuid.uuid4().hex[:8]
     container_name = f"malware-worker-{container_id}"
     logger.info(f"[*] Starting new worker container '{container_name}' for URL analysis.")
 
     temp_file_path_in_container = f"/app/temp/downloaded_file_{container_id}"
-    
+
     # set environment variables for the worker container
     env = {
         "TARGET_URL": url,
@@ -104,13 +104,13 @@ def launch_worker_container(url: str, debug_mode: bool) -> dict:
 
         # parse the JSON result from the worker's stdout
         try:
-            raw_result_json = logs.split("<RESULT>\n")[-1].strip()
+            raw_result_json = logs.split("<YARA scan result>\n")[-1].strip()
             result = json.loads(raw_result_json)
             logger.info(f"[+] Worker result parsed successfully: {result.get('is_malicious', 'N/A')}")
         except (json.JSONDecodeError, IndexError) as parse_error:
             logger.error(f"[!] Failed to parse JSON from worker logs: {parse_error}. Raw log:\n{logs}")
             result = {"error": "Invalid or missing JSON result from worker", "log": logs, "is_malicious": True, "message": "Failed to parse worker output."}
-        
+
         return result
 
     except docker.errors.ImageNotFound:
@@ -123,4 +123,3 @@ def launch_worker_container(url: str, debug_mode: bool) -> dict:
         if container and not debug_mode:
             remove_container_if_exists(container_name)
         return {"error": str(e), "is_malicious": True, "message": "Unexpected error during worker execution."}
-
