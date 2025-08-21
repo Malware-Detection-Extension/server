@@ -1,0 +1,108 @@
+{
+  "is_malicious": false,
+  "risk_score": 50,
+  "message": "URL and file appear to be safe.",
+  "url_analysis": {
+    "is_malicious": false,
+    "probability": 0.3986196517944336
+  },
+  "file_info": {
+    "size": 10123,
+    "mime_type": "text/html",
+    "file_type": "HTML document"
+  },
+  "hashes": {
+    "md5": "46a23432a689d25b64a1145715543066",
+    "sha1": "261b9c3ddee525378559ff56e4d5d9b92f8f6d9c",
+    "sha256": "188e6782b0b31e5be207d439fb703b21628bb03413d4c9c808ee09beef38df74"
+  },
+  "entropy": 4.82614913792451,
+  "packers": [],
+  "pe_info": null,
+  "extension_risk": {
+    "risk": "low",
+    "extension": ".bin"
+  },
+  "size_anomaly": null,
+  "archived_files": null,
+  "yara_matches": [
+    {
+      "rule": "DOCX_Suspicious_XML_Strings",
+      "meta": {
+        "description": "Word XML 구조 내 외부 실행 관련 문자열 포함",
+        "author": "Seo",
+        "severity": "medium",
+        "category": "document"
+      },
+      "strings": [
+        {
+          "offset": 0,
+          "identifier": "$url",
+          "data": ""
+        },
+        {
+          "offset": 0,
+          "identifier": "$script",
+          "data": ""
+        }
+      ]
+    },
+    {
+      "rule": "Media_Metadata_With_URL_or_IP",
+      "meta": {
+        "description": "미디어 파일 메타데이터에 URL 또는 IP 주소가 포함됨",
+        "author": "Seo"
+      },
+      "strings": [
+        {
+          "offset": 0,
+          "identifier": "$url1",
+          "data": ""
+        },
+        {
+          "offset": 0,
+          "identifier": "$url2",
+          "data": ""
+        }
+      ]
+    },
+    {
+      "rule": "Media_Metadata_With_Script_Extensions",
+      "meta": {
+        "description": "미디어 메타데이터에 .vbs, .ps1, .js 등 실행 스크립트 확장자가 포함됨",
+        "author": "Seo"
+      },
+      "strings": [
+        {
+          "offset": 0,
+          "identifier": "$js",
+          "data": ""
+        }
+      ]
+    }
+  ],
+  "obfuscation_detected": false,
+  "deobfuscation_result": {
+    "success": false,
+    "obfuscation_types": [],
+    "log": []
+  },
+  "analysis_details": {
+    "potential_urls": [
+      "https://www.googletagmanager.com/gtag/js?id=G-5GQV3CJ17N\"></script>",
+      "https://js.hcaptcha.com/1/api.js'",
+      "https://bazaar.abuse.ch/api/#auth_key\"",
+      "https://x.com/abuse_ch\"",
+      "https://www.linkedin.com/company/abuse-ch/\"",
+      "https://ioc.exchange/@abuse_ch\"",
+      "https://bsky.app/profile/abuse-ch.bsky.social\"",
+      "https://abuse.ch/terms-and-conditions/\"",
+      "https://abuse.ch/terms-of-use/\"",
+      "https://abuse.ch/privacy-policy/\"",
+      "https://abuse.ch/cookie-policy/\""
+    ],
+    "potential_ips": [],
+    "suspicious_api_calls": ""
+  },
+  "yara_base_score": 50
+}
