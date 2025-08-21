@@ -59,7 +59,7 @@ def main():
             res = requests.get(target_url, headers=DEFAULT_HEADERS, timeout=30)
             res.raise_for_status()
             file_data = res.content
-        
+
         # save the file locally for analysis
         parsed = urlparse(target_url)
         file_name = os.path.basename(parsed.path) or "downloaded.bin"
@@ -72,7 +72,7 @@ def main():
         # initialize and run the analysis engine
         engine = AnalysisEngine(download_path, file_data, file_name)
         live_analysis_data = engine.run_all_analyses()
-        
+
         # set a final message based on the analysis result
         if not live_analysis_data.get("is_malicious"):
             live_analysis_data["message"] = "The file appears to be safe."
@@ -89,11 +89,9 @@ def main():
         # ensure a final report is always generated and printed to stdout
         final_report = populate_report_data(report_template, live_analysis_data)
 
-        print("<RESULT>\n" + json.dumps(final_report, ensure_ascii=False))
+        print("<YARA scan result>\n" + json.dumps(final_report, ensure_ascii=False))
         sys.stdout.flush()
         sys.exit(0)
 
 if __name__ == "__main__":
     main()
-
-
