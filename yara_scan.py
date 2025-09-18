@@ -4,17 +4,12 @@ import yara
 import os
 import logging
 
-# 로거 설정
 logger = logging.getLogger("yara_scanner")
 
 # class to scan files for malware using a set of YARA rules
 class MalwareScanner:
     # initialize the scanner by loading and compiling YARA rules from a list of file paths
     def __init__(self, rule_filepaths=None):
-        """
-        Initializes the scanner with a list of YARA rule file paths.
-        :param rule_filepaths: A list of strings, where each string is a path to a .yar file.
-        """
         if rule_filepaths is None:
             rule_filepaths = []
         self.rule_filepaths = rule_filepaths
@@ -22,17 +17,11 @@ class MalwareScanner:
 
     # compile YARA rules from the specified file paths
     def _load_rules(self):
-        """
-        Compiles YARA rules from the provided list of file paths.
-        Uses the filename (without extension) as the namespace for each rule file.
-        """
         if not self.rule_filepaths:
             logger.warning("No YARA rule files provided for compilation.")
             return None
 
         try:
-            # Create a dictionary for the filepaths argument of yara.compile
-            # {'namespace1': 'path/to/rule1.yar', 'namespace2': 'path/to/rule2.yar'}
             filepaths_dict = {}
             for path in self.rule_filepaths:
                 if os.path.exists(path):
