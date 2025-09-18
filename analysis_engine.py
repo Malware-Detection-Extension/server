@@ -16,6 +16,8 @@ try:
 except ImportError:
     pefile = None
 
+# Constants and Configuration
+
 EXTENSION_RISKS = {
     ".exe": "high", ".dll": "high", ".sys": "high", ".scr": "high", ".pif": "high", ".com": "high",
     ".bat": "medium", ".cmd": "medium", ".vbs": "medium", ".js": "medium", ".ps1": "medium",
@@ -28,7 +30,6 @@ TYPICAL_SIZES = {
 }
 
 IP_PATTERN = rb'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
-
 URL_PATTERN = rb'https?://[^\s/$.?#].[^\s]*'
 
 SUSPICIOUS_APIS = [
@@ -40,6 +41,22 @@ URL_FILTER_LIST = [
     "schemas.microsoft.com", "www.w3.org", "ns.adobe.com", "purl.org",
 ]
 
+# Dynamic YARA Rule Mapping
+BASE_RULES_PATH = os.path.join(os.path.dirname(__file__), 'rules')
+RULE_CATEGORY_MAP = {
+    'PE Executable': 'executables',
+    'PDF Document': 'documents',
+    'Microsoft Word': 'documents',
+    'Microsoft Excel': 'spreadsheets',
+    'Microsoft PowerPoint': 'documents',
+    'Rich Text Format': 'documents',
+    'Zip archive': 'archives',
+    'RAR archive': 'archives',
+    'HTML document': 'emails',
+    'JPEG image': 'images',
+    'PNG image': 'images',
+    'MP3 audio': 'media',
+}
 
 # class to perform static analysis on a given file
 class AnalysisEngine:
@@ -69,10 +86,10 @@ class AnalysisEngine:
     # run the detailed analysis process for a single, non-archive file
     def _analyze_single_file(self):
         self._extract_indicators()
-        is_pe = 'pe executable' in self.results.get("file_info", {}).get("file_type", "").lower()
-        if is_pe:
+        file_type_str = self.results.get("file_info", {}).get("file_type", "").lower()
+        if 'pe executable' in file_type_str:
             self._analyze_pe_details()
-        self._run_yara_scan()
+        self._run_yara_scan() # This will now run dynamically
         self._calculate_final_score_and_verdict()
 
     # extract files from an archive and recursively analyze each one
@@ -86,7 +103,6 @@ class AnalysisEngine:
                 with zipfile.ZipFile(self.file_path, 'r') as zip_ref:
                     zip_ref.extractall(temp_dir)
 
-                # iterate through all extracted files for analysis
                 for root, _, files in os.walk(temp_dir):
                     for filename in files:
                         archived_file_path = os.path.join(root, filename)
@@ -94,30 +110,25 @@ class AnalysisEngine:
                             with open(archived_file_path, 'rb') as f:
                                 archived_file_data = f.read()
 
-                            # create a new engine instance for recursive analysis
                             sub_engine = AnalysisEngine(archived_file_path, archived_file_data, filename)
                             sub_report = sub_engine.run_all_analyses()
-
                             self.results["archived_files"].append(sub_report)
 
                             if sub_report.get("is_malicious"):
                                 malicious_files_count += 1
                             max_risk_score = max(max_risk_score, sub_report.get("risk_score", 0))
-
                         except Exception as e:
                             print(f"Error analyzing archived file {filename}: {e}")
-
             except zipfile.BadZipFile:
-                # handle corrupted zip files
                 self.results["message"] = "Error: Corrupted or invalid ZIP file."
                 self.results["is_malicious"] = True
                 self.results["risk_score"] = 70
                 return
 
-        # consolidate final results
-        self.results["risk_score"] = max(max_risk_score, self.results.get("risk_score", 0))
+        # Consolidate results for the archive itself
+        base_score = self.results.get("risk_score", 0)
+        self.results["risk_score"] = max(max_risk_score, base_score)
         self.results["is_malicious"] = self.results["risk_score"] >= 60
-
         if malicious_files_count > 0:
             self.results["message"] = f"Archive contains {malicious_files_count} malicious file(s)."
         else:
@@ -137,14 +148,15 @@ class AnalysisEngine:
     def _calculate_entropy(self):
         if not self.file_data: return 0.0
         entropy = 0; data_len = len(self.file_data)
-        for x in range(256):
-            p_x = float(self.file_data.count(x.to_bytes(1, 'big'))) / data_len
-            if p_x > 0: entropy += - p_x * math.log(p_x, 2)
+        byte_counts = Counter(self.file_data)
+        for count in byte_counts.values():
+            p_x = count / data_len
+            entropy -= p_x * math.log(p_x, 2)
         return entropy
 
     # assess risk based on file extension and size anomalies
     def _analyze_risk_factors(self):
-        ext = f".{self.original_filename.split('.')[-1].lower()}"
+        ext = os.path.splitext(self.original_filename)[1].lower()
         self.results["extension_risk"] = { "risk": EXTENSION_RISKS.get(ext, "low"), "extension": ext }
         file_type = self.results.get("file_info", {}).get("file_type", "").lower()
         file_size = self.results.get("file_info", {}).get("size", 0)
@@ -165,8 +177,8 @@ class AnalysisEngine:
         }
         found_apis = Counter()
         for api in SUSPICIOUS_APIS:
-            if api in self.file_data.lower(): found_apis[api.decode()] += 1
-        if found_apis: details["suspicious_api_calls"] = ", ".join(found_apis.keys())
+            if api.lower() in self.file_data.lower(): found_apis[api.decode()] += 1
+        if found_apis: details["suspicious_api_calls"] = list(found_apis.keys())
         self.results["analysis_details"] = details
 
     # analyze PE file structure, check for packers, and extract header info
@@ -188,7 +200,32 @@ class AnalysisEngine:
 
     # scan the file with YARA rules to detect known malware patterns
     def _run_yara_scan(self):
-        scanner = MalwareScanner()
+        signature_type = self.results.get("file_info", {}).get("file_type", "Unknown")
+
+        # Find the appropriate rule category based on the file's signature
+        rule_category = None
+        for key, category in RULE_CATEGORY_MAP.items():
+            if key in signature_type:
+                rule_category = category
+                break
+
+        rule_files_to_apply = []
+        if rule_category:
+            target_rule_dir = os.path.join(BASE_RULES_PATH, rule_category)
+            if os.path.isdir(target_rule_dir):
+                rule_files_to_apply = [
+                    os.path.join(target_rule_dir, f)
+                    for f in os.listdir(target_rule_dir) if f.endswith(('.yar', '.yara'))
+                ]
+
+        if not rule_files_to_apply:
+            print(f"No specific YARA rules found for type '{signature_type}'. Skipping YARA scan.")
+            self.results.update({"yara_matches": [], "yara_base_score": 0})
+            return
+
+        # Initialize the scanner with the selected rule files and scan
+        print(f"Applying YARA rules from '{rule_category}' category for file type '{signature_type}'.")
+        scanner = MalwareScanner(rule_filepaths=rule_files_to_apply)
         scan_result = scanner.scan_file(self.file_path)
         self.results.update(scan_result)
 
@@ -196,20 +233,19 @@ class AnalysisEngine:
     def _calculate_final_score_and_verdict(self):
         final_score = self.results.get("yara_base_score", 0)
 
-        # add points to the score based on various risk factors
+        # Add points to the score based on various risk factors
         if final_score < 100:
             if self.results.get("extension_risk", {}).get("risk") == "high":
                 final_score = min(100, final_score + 25)
             if self.results.get("extension_risk", {}).get("risk") == "medium":
                 final_score = min(100, final_score + 10)
             if self.results.get("obfuscation_detected"):
-                final_score = min(100, final_score + 10)
+                final_score = min(100, final_score + 20) # Increased penalty for obfuscation
             if self.results.get("entropy", 0) > 7.9:
-                 final_score = min(100, final_score + 10)
+                final_score = min(100, final_score + 10)
 
-        # set final results based on the calculated score
-        self.results["risk_score"] = final_score
-        self.results["is_malicious"] = final_score >= 60
+        self.results["risk_score"] = int(final_score)
+        self.results["is_malicious"] = self.results["risk_score"] >= 60
 
         if self.results["is_malicious"]:
             self.results["message"] = "Malicious file detected based on multiple indicators."
