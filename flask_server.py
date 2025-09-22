@@ -68,7 +68,7 @@ def analyze_download():
         # combine human-readable messages from both analysis stages
         messages = []
         if url_is_malicious:
-            result["risk_score"] += 20
+            result["risk_score"] += 0
             if result.get("risk_score") >= 60:
                 result["is_malicious"] = True
                 messages.append("As a result of a comprehensive analysis, it is suspected to be a malicious file.")
